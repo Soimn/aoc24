@@ -1,0 +1,9 @@
+main:
+	addi sp, sp, -0x10
+	sw ra, 0(sp)
+
+	ld a0, input
+	call print_string
+
+	lw ra, 0(sp)
+	jalr x0, ra, 0

@@ -1,0 +1,23 @@
+hello_world_string: "Hello World" 0x0A 0x00
+
+main:
+	addi sp, sp, -0x10
+	sw fp, 12(sp)
+	addi fp, sp, 0x10
+	sw ra, -8(fp)
+
+	addi s1, x0, hello_world_string
+	loop:
+		lbu a0, 0(s1)
+		beq a0, zero, loop_exit
+
+		call print_char
+
+		addi s1, s1, 1
+		jal x0, loop
+	loop_exit:
+
+	lw ra, -8(fp)
+	lw fp, -4(fp)
+	addi sp, sp, 0x10
+	jalr x0, ra, 0
