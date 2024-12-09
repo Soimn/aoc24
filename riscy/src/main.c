@@ -216,7 +216,7 @@ typedef enum Mnemonic
 	Mnemonic_bltu,
 	Mnemonic_bgeu,
 	Mnemonic_call,
-	Mnemonic_ld,
+	Mnemonic_li,
 } Mnemonic;
 
 String Mnemonic_Strings[] = {
@@ -258,7 +258,7 @@ String Mnemonic_Strings[] = {
 	[Mnemonic_bltu]  = MS_STRING("bltu"),
 	[Mnemonic_bgeu]  = MS_STRING("bgeu"),
 	[Mnemonic_call]  = MS_STRING("call"),
-	[Mnemonic_ld]    = MS_STRING("ld"),
+	[Mnemonic_li]    = MS_STRING("li"),
 };
 
 typedef u8 Reg;
@@ -362,7 +362,11 @@ typedef struct Token
 		Mnemonic mnemonic;
 		Reg reg;
 		String ident;
-		s64 integer;
+		struct
+		{
+			s64 integer;
+			u8 integer_len;
+		};
 		String string;
 	};
 } Token;
@@ -467,8 +471,9 @@ Lexer_NextToken(Lexer* lexer)
 			{
 				bool encountered_errors = false;
 
-				s64 value   = c&0xF;	
-				bool is_neg = (c == '-');
+				s64 value       = c&0xF;	
+				bool is_neg     = (c == '-');
+				umm digit_count = 1;
 
 				if (c == '-' || c == '+')
 				{
@@ -509,13 +514,7 @@ Lexer_NextToken(Lexer* lexer)
 						if (base != 10)
 						{
 							++lexer->cursor;
-
-							if (!Char_IsDigit(*lexer->cursor))
-							{
-								//// ERROR
-								Error(lexer->line, lexer->line_cursor, start_of_token, lexer->cursor - start_of_token, "Missing digits after base prefix");
-								encountered_errors = true;
-							}
+							digit_count = 0;
 						}
 					}
 
@@ -537,13 +536,20 @@ Lexer_NextToken(Lexer* lexer)
 						{
 							value = value*base + digit;
 							has_overflown = (has_overflown || value > U32_MAX);
+							digit_count += 1;
 							++lexer->cursor;
 						}
 					}
 
 					if (!encountered_errors)
 					{
-						if (has_overflown)
+						if (digit_count == 0)
+						{
+							//// ERROR
+							Error(lexer->line, lexer->line_cursor, start_of_token, lexer->cursor - start_of_token, "Missing digits after base prefix");
+							encountered_errors = true;
+						}
+						else if (has_overflown)
 						{
 							//// ERROR
 							Error(lexer->line, lexer->line_cursor, start_of_token, lexer->cursor - start_of_token, "Numeric literal does not fit in 32 bits");
@@ -551,8 +557,9 @@ Lexer_NextToken(Lexer* lexer)
 						}
 						else
 						{
-							token.kind    = Token_Int;
-							token.integer = (is_neg ? -value : value);
+							token.kind        = Token_Int;
+							token.integer     = (is_neg ? -value : value);
+							token.integer_len = (!is_neg && base == 16 ? (digit_count <= 2 ? 1 : digit_count <= 4 ? 2 : 4) : 4);
 						}
 					}
 				}
@@ -646,7 +653,7 @@ IsImmInRange(Mnemonic mnemonic, s64 imm)
 {
 	bool is_shift = (mnemonic == Mnemonic_slli || mnemonic == Mnemonic_srli || mnemonic == Mnemonic_srai);
 	bool is_20bit = (mnemonic == Mnemonic_lui || mnemonic == Mnemonic_auipc || mnemonic == Mnemonic_jal);
-	bool is_32bit = (mnemonic == Mnemonic_call || mnemonic == Mnemonic_ld);
+	bool is_32bit = (mnemonic == Mnemonic_call || mnemonic == Mnemonic_li);
 
 	bool result;
 	if      (is_shift) result = (imm >= 0 && imm < 32);
@@ -937,9 +944,20 @@ PF_print_char(u32 regs[32])
 }
 
 void
-PF_print_string(u32 regs[32])
+PF_divmod(u32 regs[32])
 {
-	printf("%s", &Memory[regs[10]]);
+	s32 a = regs[10];
+	s32 b = regs[11];
+	regs[10] = a / b;
+	regs[11] = a % b;
+}
+
+void
+PF_mul(u32 regs[32])
+{
+	s32 a = regs[10];
+	s32 b = regs[11];
+	regs[10] = a * b;
 }
 
 typedef struct Predefined_Func
@@ -952,7 +970,8 @@ typedef struct Predefined_Func
 
 Predefined_Func PredefinedFuncs[] = {
 	{ MS_STRING("print_char"), PF_print_char },
-	{ MS_STRING("print_string"), PF_print_string },
+	{ MS_STRING("divmod"),     PF_divmod     },
+	{ MS_STRING("mul"),        PF_mul        },
 };
 
 bool
@@ -971,11 +990,7 @@ Assemble(u8* code, u8* input, u16* main_addr)
 	Fixup fixup_stack[MAX_FIXUPS];
 	umm fixup_cursor = 0;
 
-	encountered_errors = !AddLabel(STRING("input"), 0, label_stack, &label_cursor, &(u16){0});
-	umm input_len = 0;
-	for (u8* scan = input; *scan != 0; ++scan) ++input_len;
-	PUSH_DATA(input, input_len);
-	PUSH_DATA(&(u32){0}, 1);
+	encountered_errors = !AddLabel(STRING("input"), -1, label_stack, &label_cursor, &(u16){0});
 
 	for (umm i = 0; !encountered_errors && i < ARRAY_LEN(PredefinedFuncs); ++i)
 	{
@@ -989,7 +1004,17 @@ Assemble(u8* code, u8* input, u16* main_addr)
 
 		if (token.kind == Token_Ident)
 		{
-			if (!Expect(lexer, Token_Colon, 0)) encountered_errors = true;
+			if (String_Match(token.ident, STRING("rep8")))
+			{
+				s64 rep_count;
+				s64 value;
+				if (!Expect(lexer, Token_Int, &rep_count) || !Expect(lexer, Token_Int, &value)) encountered_errors = true;
+				else
+				{
+					for (s64 i = 0; i < rep_count; ++i) PUSH_DATA(&(u8){value & 0xFF}, 1);
+				}
+			}
+			else if (!Expect(lexer, Token_Colon, 0)) encountered_errors = true;
 			else
 			{
 				encountered_errors = !AddLabel(token.ident, (s32)memory_cursor, label_stack, &label_cursor, &(u16){0});
@@ -997,7 +1022,7 @@ Assemble(u8* code, u8* input, u16* main_addr)
 		}
 		else if (token.kind == Token_Int)
 		{
-			PUSH_DATA(&token.integer, sizeof(u32));
+			PUSH_DATA(&token.integer, token.integer_len);
 		}
 		else if (token.kind == Token_String)
 		{
@@ -1022,18 +1047,22 @@ Assemble(u8* code, u8* input, u16* main_addr)
 					}
 				} break;
 
-				case Mnemonic_ld:
+				case Mnemonic_li:
 				{
 					Reg rd;
-					String ident;
-					if (!Expect(lexer, Token_Reg, &rd) || !Expect(lexer, Token_Comma, 0) || !Expect(lexer, Token_Ident, &ident)) encountered_errors = true;
+					s64 imm;
+					if (!Expect(lexer, Token_Reg, &rd) || !Expect(lexer, Token_Comma, 0) || !ExpectIntOrLabel(lexer, Mnemonic_li, (u16)memory_cursor, &imm, fixup_stack, &fixup_cursor, label_stack, &label_cursor)) encountered_errors = true;
 					else
 					{
-						if (!AddFixup(Mnemonic_ld, (u16)memory_cursor, ident, fixup_stack, &fixup_cursor, label_stack, &label_cursor)) encountered_errors = true;
+						if ((u32)(imm & 0xFFF) < 0x800)
+						{
+							PUSH_INSTRUCTION(PackUType(0x37, rd, ((u32)imm >> 12)));        // lui t0, (val >> 12)
+							PUSH_INSTRUCTION(PackIType(0x13, rd, 6, rd, (u32)imm & 0xFFF)); // ori rs1, rs1, val & 0xFFF
+						}
 						else
 						{
-							PUSH_INSTRUCTION(PackUType(0x37, rd, 0));        // lui t0, func >> 12
-							PUSH_INSTRUCTION(PackIType(0x13, rd, 6, rd, 0)); // ori rs1, rs1, val & 0xFFF
+							PUSH_INSTRUCTION(PackUType(0x37, rd, ~((u32)imm >> 12)));       // lui t0, ~(val >> 12)
+							PUSH_INSTRUCTION(PackIType(0x13, rd, 4, rd, (u32)imm & 0xFFF)); // xori rs1, rs1, val & 0xFFF
 						}
 					}
 				} break;
@@ -1231,7 +1260,7 @@ Assemble(u8* code, u8* input, u16* main_addr)
 							case Mnemonic_blt:  funct3 = 4; break;
 							case Mnemonic_bge:  funct3 = 5; break;
 							case Mnemonic_bltu: funct3 = 6; break;
-							case Mnemonic_bgeu: funct3 = 6; break;
+							case Mnemonic_bgeu: funct3 = 7; break;
 						}
 
 						PUSH_INSTRUCTION(PackBType(funct3, rs1, rs2, offset));
@@ -1255,7 +1284,13 @@ Assemble(u8* code, u8* input, u16* main_addr)
 
 	if (!encountered_errors)
 	{
-		for (umm i = 0; i < fixup_cursor; ++i)
+		encountered_errors = !AddLabel(STRING("input"), (u16)memory_cursor, label_stack, &label_cursor, &(u16){0});
+		umm input_len = 0;
+		for (u8* scan = input; *scan != 0; ++scan) ++input_len;
+		PUSH_DATA(input, input_len);
+		PUSH_DATA(&(u32){0}, 1);
+
+		for (umm i = 0; !encountered_errors && i < fixup_cursor; ++i)
 		{
 			Fixup fixup = fixup_stack[i];
 
@@ -1295,12 +1330,22 @@ Assemble(u8* code, u8* input, u16* main_addr)
 							*(word+1) = PackIType(0x67, rd, funct3, rs1, imm & 0xFFF);
 						} break;
 
-						case Mnemonic_ld:
+						case Mnemonic_li:
 						{
-							Reg rd;
-							UnpackUType(*word, &rd, &(s64){0});
-							*word = PackUType(0x37, rd, imm >> 12);
+							if ((u32)(imm & 0xFFF) < 0x800)
+							{
+								Reg rd;
+								UnpackUType(*word, &rd, &(s64){0});
+								*word = PackUType(0x37, rd, ((u32)imm >> 12));
+							}
+							else
+							{
+								Reg rd;
+								UnpackUType(*word, &rd, &(s64){0});
+								*word = PackUType(0x37, rd, ~((u32)imm >> 12));
+							}
 
+							Reg rd;
 							u8 funct3;
 							Reg rs1;
 							UnpackIType(*(word+1), &rd, &funct3, &rs1, &(s64){0});
@@ -1489,7 +1534,7 @@ main(int argc, char** argv)
 									case 0: should_branch = (regs[rs1] == regs[rs2]);           break;
 									case 1: should_branch = (regs[rs1] != regs[rs2]);           break;
 									case 4: should_branch = ((s32)regs[rs1] < (s32)regs[rs2]);  break;
-									case 5: should_branch = ((s32)regs[rs2] >= (s32)regs[rs2]); break;
+									case 5: should_branch = ((s32)regs[rs1] >= (s32)regs[rs2]); break;
 									case 6: should_branch = (regs[rs1] < regs[rs2]);            break;
 									case 7: should_branch = (regs[rs1] >= regs[rs2]);           break;
 								}
@@ -1535,12 +1580,11 @@ main(int argc, char** argv)
 
 								u32 offset = imm_lo | ((u32)imm_hi << 5);
 
-								u32 w;
-								if      (funct3 == 0) w = regs[rs2] & 0x00FF;
-								else if (funct3 == 1) w = regs[rs2] & 0xFFFF;
-								else                  w = regs[rs2];
+								if      (funct3 == 0) Memory[regs[rs1] + SignExtend(offset, 12)] = (u8)(regs[rs2] & 0x00FF);
+								else if (funct3 == 1) *(u16*)&Memory[regs[rs1] + SignExtend(offset, 12)] = (u16)(regs[rs2] & 0xFFFF);
+								else                  *(u32*)&Memory[regs[rs1] + SignExtend(offset, 12)] = regs[rs2];
 
-								*(u32*)&Memory[regs[rs1] + SignExtend(offset, 12)] = w;
+								;
 							} break;
 
 							case 0x67: // jalr

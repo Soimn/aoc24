@@ -1,0 +1,41 @@
+print_string:
+	addi sp, sp, -0x10
+	sw fp, 12(sp)
+	addi fp, sp, 0x10
+	sw ra, -8(fp)
+
+	sw s2, -12(fp)
+
+	addi s2, a0, 0
+	print_string_loop:
+		lbu a0, 0(s2)
+		beq a0, x0, print_string_loop_exit
+
+		call print_char
+
+		addi s2, s2, 1
+		jal x0, print_string_loop
+	print_string_loop_exit:
+
+	lw s2, -12(fp)
+
+	lw ra, -8(fp)
+	lw fp, -4(fp)
+	addi sp, sp, 0x10
+	jalr x0, ra, 0
+
+main:
+	addi sp, sp, -0x10
+	sw fp, 12(sp)
+	addi fp, sp, 0x10
+	sw ra, -8(fp)
+
+	li a0, hello_world
+	call print_string
+
+	lw ra, -8(fp)
+	lw fp, -4(fp)
+	addi sp, sp, 0x10
+	jalr x0, ra, 0
+
+hello_world: "Hello World" 0xA 0
