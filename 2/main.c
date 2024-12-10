@@ -1,104 +1,72 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-
-char*
-EatSpace(char* scan)
-{
-	while ((unsigned char)(*scan-1) < (unsigned char)0x20) ++scan;
-	return scan;
-}
-
-char*
-EatInt(char* scan, int* val)
-{
-	int result = 0;
-
-	while ((unsigned char)(*scan-'0') < (unsigned char)10)
-	{
-		result *= 10;
-		result += *scan&0xF;
-		++scan;
-	}
-
-	*val = result;
-	return scan;
-}
-
-unsigned int
-Part1(char* input)
-{
-	unsigned int result = 0;
-
-	for (char* scan = input;;)
-	{
-		scan = EatSpace(scan);
-		if (*scan == 0) break;
-
-		int first, second;
-		scan = EatInt(scan, &first);
-		scan = EatSpace(scan);
-		scan = EatInt(scan, &second);
-
-		int diff     = second - first;
-		int abs_diff = (diff < 0 ? -diff : diff);
-		bool should_be_neg = (diff < 0);
-		bool is_safe = (abs_diff >= 1 && abs_diff <= 3);
-
-		int prev = second;
-		while (*scan != '\r')
-		{
-			int cur;
-			scan = EatSpace(scan);
-			scan = EatInt(scan, &cur);
-
-			int diff     = cur - prev;
-			int abs_diff = (diff < 0 ? -diff : diff);
-			is_safe = (is_safe && diff < 0 == should_be_neg && abs_diff >= 1 && abs_diff <= 3);
-
-			prev = cur;
-		}
-
-		if (is_safe) result += 1;
-
-		scan += sizeof("\r\n")-1;
-	}
-
-	return result;
-}
-
-unsigned int
-Part2(char* input)
-{
-	return 0;
-}
+#include "../aoc.h"
 
 int
 main(int argc, char** argv)
 {
-	if (argc != 2) fprintf(stderr, "Invalid Arguments. Expected: day2 input_file\n");
-	else
-	{
-		FILE* input_file = fopen(argv[1], "rb");
-		if (input_file == 0) fprintf(stderr, "Failed to open input file\n");
-		else
-		{
-			fseek(input_file, 0, SEEK_END);
-			size_t input_file_size = ftell(input_file);
-			rewind(input_file);
-			
-			char* input = malloc(input_file_size + 1);
-			if (input == 0 || fread(input, 1, input_file_size, input_file) != input_file_size) fprintf(stderr, "Failed to read input file\n");
-			else
-			{
-				printf("Part 1 result: %u\n", Part1(input));
-				printf("Part 2 result: %u\n", Part2(input));
-			}
+	String input;
+	if (!LoadInput(argc, argv, &input)) return -1;
 
-			fclose(input_file);
+	umm part1_result = 0;
+	umm part2_result = 0;
+
+	for (;;)
+	{
+		EatSpace(&input);
+		if (input.len == 0) break;
+
+		smm sequence[8];
+		umm sequence_len = 0;
+		for (;;)
+		{
+			ASSERT(input.len != 0 && sequence_len < ARRAY_LEN(sequence));
+
+			EatSpace(&input);
+			EatSMM(&input, &sequence[sequence_len++]);
+
+			if (EatPrefix(&input, STRING("\r\n"))) break;
+			else                                   continue;
 		}
+
+		smm sequence_diffs[ARRAY_LEN(sequence)-1];
+		umm sequence_diffs_len = sequence_len-1;
+
+		smm majority_sign = 0;
+		for (umm i = 1; i < sequence_len; ++i)
+		{
+			sequence_diffs[i-1] = sequence[i] - sequence[i-1];
+			majority_sign += (sequence[i-1] < sequence[i] ? 1 : -1);
+		}
+
+		if (majority_sign < 0)
+		{
+			for (umm i = 0; i < sequence_diffs_len; ++i) sequence_diffs[i] = -sequence_diffs[i];
+		}
+
+		#define IS_SAFE(DIFF) ((umm)((DIFF)-1) < (umm)3)
+
+		umm i = 0;
+		while (i < sequence_diffs_len && IS_SAFE(sequence_diffs[i])) ++i;
+
+		bool is_part1_safe = (i == sequence_diffs_len);
+
+		if (i >= sequence_diffs_len-1 || i != 0 && IS_SAFE(sequence_diffs[i-1] + sequence_diffs[i]))
+		{
+			i += 1;
+		}
+		else if (i == 0 && IS_SAFE(sequence_diffs[i+1]) || IS_SAFE(sequence_diffs[i] + sequence_diffs[i+1]))
+		{
+			i += 2;
+		}
+
+		while (i < sequence_diffs_len && IS_SAFE(sequence_diffs[i])) ++i;
+
+		bool is_part2_safe = (i >= sequence_diffs_len);
+
+		if (is_part1_safe) part1_result += 1;
+		if (is_part2_safe) part2_result += 1;
 	}
+
+	printf("Part 1 results: %llu\nPart 2 results: %llu\n", part1_result, part2_result);
 
 	return 0;
 }
