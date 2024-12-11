@@ -175,11 +175,13 @@ eat_prefix:
 	addi t1, a1, 0
 	addi a1, x0, 0
 	eat_prefix_loop:
-		lw t2, 0(t0)
-		lw t3, 0(t1)
+		lbu t2, 0(t0)
+		lbu t3, 0(t1)
 
 		beq t3, x0, eat_prefix_loop_match
 		bne t2, t3, eat_prefix_loop_end
+		addi t0, t0, 1
+		addi t1, t1, 1
 		jal x0, eat_prefix_loop
 
 	eat_prefix_loop_match:
@@ -187,7 +189,6 @@ eat_prefix:
 	addi a1, x0, 1
 	eat_prefix_loop_end:
 	
-
 	lw ra, -8(fp)
 	lw fp, -4(fp)
 	addi sp, sp, 0x10
@@ -211,64 +212,77 @@ main:
 	addi s6, x0, 1
 	parse_loop:
 		lbu t0, 0(s1)
-		addi s1, s1, 1
 		beq t0, x0, parse_loop_end
 
-		addi a0, s1, 0
-		li a1, mulp_string
-		call eat_prefix
-		addi s1, a0, 0
-		beq a1, x0, do_test
-		addi a0, s1, 0
-		call eat_u32
-		addi s1, a0, 0
-		beq a2, x0, do_test
-		addi t0, x0, 1000
-		bge a1, t0, do_test
-		addi s2, a1, 0
-		lbu t0, 0(s1)
-		addi t1, x0, 0x2C
-		bne t0, t1, do_test
-		addi s1, s1, 1
-		addi a0, s1, 0
-		call eat_u32
-		addi s1, a0, 0
-		beq a2, x0, do_test
-		addi t0, x0, 1000
-		bge a1, t0, do_test
-		addi s3, a1, 0
-		lbu t0, 0(s1)
-		addi t1, x0, 0x29
-		bne t0, t1, do_test
-		addi s1, s1, 1
-		addi a0, s2, 0
-		addi a1, s3, 0
-		call mul
-		li t0, part1_result
-		lw t1, 0(t0)
-		add t1, t1, a0
-		sw t1, 0(t0)
-		beq s6, x0, do_test
-		li t0, part2_result
-		lw t1, 0(t0)
-		add t1, t1, a0
-		sw t1, 0(t0)
+		mulp_test:
+			addi a0, s1, 0
+			li a1, mulp_string
+			call eat_prefix
+			addi s1, a0, 0
+			beq a1, x0, do_test
+
+			addi a0, s1, 0
+			call eat_u32
+			addi s1, a0, 0
+			beq a2, x0, test_end
+			addi t0, x0, 1000
+			bge a1, t0, test_end
+			addi s2, a1, 0
+
+			lbu t0, 0(s1)
+			addi t1, x0, 0x2C
+			bne t0, t1, test_end
+			addi s1, s1, 1
+
+			addi a0, s1, 0
+			call eat_u32
+			addi s1, a0, 0
+			beq a2, x0, test_end
+			addi t0, x0, 1000
+			bge a1, t0, test_end
+			addi s3, a1, 0
+
+			lbu t0, 0(s1)
+			addi t1, x0, 0x29
+			bne t0, t1, test_end
+			addi s1, s1, 1
+
+			addi a0, s2, 0
+			addi a1, s3, 0
+			call mul
+
+			li t0, part1_result
+			lw t1, 0(t0)
+			add t1, t1, a0
+			sw t1, 0(t0)
+
+			beq s6, x0, test_end
+			li t0, part2_result
+			lw t1, 0(t0)
+			add t1, t1, a0
+			sw t1, 0(t0)
+			jal x0, test_end
+
 		do_test:
+			addi a0, s1, 0
+			li a1, do_string
+			call eat_prefix
+			addi s1, a0, 0
+			beq a1, x0, dont_test
+			addi s6, x0, 1
+			jal x0, test_end
 
-		addi a0, s1, 0
-		li a1, do_string
-		call eat_prefix
-		addi s1, a0, 0
-		beq a1, x0, dont_test
-		addi s6, x0, 1
 		dont_test:
+			addi a0, s1, 0
+			li a1, dont_string
+			call eat_prefix
+			addi s1, a0, 0
+			beq a1, x0, advance
+			addi s6, x0, 0
+			jal x0, test_end
 
-		addi a0, s1, 0
-		li a1, dont_string
-		call eat_prefix
-		addi s1, a0, 0
-		beq a1, x0, dont_test
-		addi s6, x0, 0
+		advance:
+			addi s1, s1, 1
 		test_end:
 	
 		jal x0, parse_loop
@@ -297,6 +311,6 @@ print_results_part2_prefix_string: 0xA "Part 2 result: " 0
 part1_result: 0x00000000
 part2_result: 0x00000000
 
-mulp_string: "mul("
-do_string: "do()"
-dont_string: "don't()"
+mulp_string: "mul(" 0
+do_string: "do()" 0
+dont_string: "don't()" 0
