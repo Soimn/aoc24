@@ -32,9 +32,9 @@ SearchMAS(u8* map, umm map_size)
 	u32 mas = *(u32*)"MAS";
 	u32 sam = *(u32*)"SAM";
 
-	for (umm j = 0; j < map_size - 3; ++j)
+	for (umm j = 0; j < map_size - 2; ++j)
 	{
-		for (umm i = 0; i < map_size - 3; ++i)
+		for (umm i = 0; i < map_size - 2; ++i)
 		{
 			u32 sample1 = 0;
 			u32 sample2 = 0;

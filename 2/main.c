@@ -49,7 +49,7 @@ main(int argc, char** argv)
 
 		bool is_part1_safe = (i == sequence_diffs_len);
 
-		if (i >= sequence_diffs_len-1 || i != 0 && IS_SAFE(sequence_diffs[i-1] + sequence_diffs[i]))
+		if (i == sequence_diffs_len-1 || i != 0 && IS_SAFE(sequence_diffs[i-1] + sequence_diffs[i]))
 		{
 			i += 1;
 		}

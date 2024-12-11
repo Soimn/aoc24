@@ -1014,6 +1014,16 @@ Assemble(u8* code, u8* input, u16* main_addr)
 					for (s64 i = 0; i < rep_count; ++i) PUSH_DATA(&(u8){value & 0xFF}, 1);
 				}
 			}
+			else if (String_Match(token.ident, STRING("rep32")))
+			{
+				s64 rep_count;
+				s64 value;
+				if (!Expect(lexer, Token_Int, &rep_count) || !Expect(lexer, Token_Int, &value)) encountered_errors = true;
+				else
+				{
+					for (s64 i = 0; i < rep_count; ++i) PUSH_DATA(&(u32){(u32)value}, sizeof(u32));
+				}
+			}
 			else if (!Expect(lexer, Token_Colon, 0)) encountered_errors = true;
 			else
 			{
