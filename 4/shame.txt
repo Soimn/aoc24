@@ -1,0 +1,85 @@
+#define MAP_PAD_LEFT 3
+#define MAP_PAD_RIGHT 4
+#define MAP_PITCH (MAP_PAD_LEFT + 140 + MAP_PAD_RIGHT)
+	u8 map_buffer[(MAP_PITCH-MAP_PAD_LEFT)*MAP_PITCH];
+	u8* map = &map_buffer[MAP_PAD_LEFT];
+	umm map_size = 0;
+
+	{ /// Way too overcomplicated attampt at touching the minimal amount of memory
+		umm i = 0;
+
+		for (smm j = -MAP_PAD_LEFT; j < 0; ++j) map[j] = 0;
+
+		while (i < input.len && input.data[i] != '\r')
+		{
+			map[i] = input.data[i];
+			++i;
+		}
+
+		for (umm j = i; j < i + MAP_PAD_RIGHT; ++j) map[j] = 0;
+
+		map_size = i;
+		i += sizeof("\r\n")-1;
+
+		for (umm y = 1; y < map_size; ++y)
+		{
+			u8* map_line = &map[y*MAP_PITCH];
+
+			for (smm j = -MAP_PAD_LEFT; j < 0; ++j) map_line[j] = 0;
+
+			for (umm x = 0; x < map_size; ++x)
+			{
+				map_line[x] = input.data[i];
+				++i;
+			}
+
+			for (umm j = map_size; j < map_size + MAP_PAD_RIGHT; ++j) map_line[j] = 0;
+
+			i += sizeof("\r\n")-1;
+		}
+
+		for (umm y = map_size; y < map_size + MAP_PAD_RIGHT; ++y)
+		{
+			u8* map_line = &map[y*MAP_PITCH - MAP_PAD_LEFT];
+			for (umm x = 0; x < MAP_PAD_LEFT + map_size + MAP_PAD_RIGHT; ++x) map_line[x] = 0;
+		}
+
+		ASSERT(i == input.len);
+	}
+
+	u32 xmas = *(u32*)"XMAS";
+	u32 samx = *(u32*)"SAMX";
+	u32 mas  = *(u32*)"MAS";
+	u32 sam  = *(u32*)"SAM";
+	for (umm y = 0; y < map_size - 2; ++y)
+	{
+		for (umm x = 0; x < map_size - 2; ++x)
+		{
+			u8* kernel = &map[y*MAP_PITCH + x];
+
+			u32 kernel_lines[4];
+			u32 kernel_cols[4];
+			for (umm j = 0; j < 4; ++j)
+			{
+				kernel_lines[j] = *(u32*)&kernel[j*MAP_PITCH];
+				kernel_cols[0] |= (u32)kernel[j*MAP_PITCH + 0] << j*8;
+				kernel_cols[1] |= (u32)kernel[j*MAP_PITCH + 1] << j*8;
+				kernel_cols[2] |= (u32)kernel[j*MAP_PITCH + 2] << j*8;
+				kernel_cols[3] |= (u32)kernel[j*MAP_PITCH + 3] << j*8;
+			}
+
+			for (umm i = 0; i < 4; ++i)
+			{
+				part1_result += (kernel_lines[i] == xmas || kernel_lines[i] == samx) + (kernel_cols[i] == xmas || kernel_cols[i] == samx);
+			}
+
+			u32 diag     = (kernel_lines[0]&0xFF) | (kernel_lines[1]&0xFF00) | (kernel_lines[2]&0xFF0000) | (kernel_lines[3]&0xFF000000);
+			u32 antidiag = (kernel_lines[0]&0xFF000000) | (kernel_lines[1]&0xFF0000) | (kernel_lines[2]&0xFF00) | (kernel_lines[3]&0xFF);
+
+			part1_result += (diag == xmas || diag == samx) + (antidiag == xmas || antidiag == samx);
+
+			u32 short_diag     = diag&0xFFFFFF;
+			u32 short_antidiag = (kernel_lines[0]&0xFF0000) | (kernel_lines[1]&0xFF00) | (kernel_lines[0]&0xFF);
+			part2_result += ((short_diag == mas || short_diag == sam) && (short_antidiag == mas || short_antidiag == sam));
+		}
+	}
