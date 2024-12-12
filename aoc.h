@@ -246,3 +246,82 @@ EatPrefix(String* input, String prefix)
 
 	return result;
 }
+
+// Taken from http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-1a
+// Licensed under CC0 Public Domain
+u64
+FNV1A(String string)
+{
+  u64 hash = 14695981039346656037;
+
+  for (umm i = 0; i < string.len; ++i)
+  {
+    hash ^= string.data[i];
+    hash *= 1099511628211;
+  }
+
+  return hash;
+}
+
+typedef union u128
+{
+	struct { u64 lo; u64 hi; };
+	u32 e[4];
+} u128;
+
+#define U128(LO, HI) (u128){ (LO), (HI) }
+
+bool
+U128_IsSet(u128 n, umm bit)
+{
+	bool result;
+
+	ASSERT(bit < 128);
+	if (bit < 64) result = (n.lo >> bit) & 1;
+	else          result = (n.hi >> (bit&63)) & 1;
+
+	return result;
+}
+
+u128
+U128_Set(u128 n, umm bit)
+{
+	ASSERT(bit < 128);
+	if (bit < 64) n.lo |= 1ULL << bit;
+	else          n.hi |= 1ULL << (bit&63);
+
+	return n;
+}
+
+bool
+U128_Equal(u128 a, u128 b)
+{
+	return (a.lo == b.lo && a.hi == b.hi);
+}
+
+u128
+U128_And(u128 a, u128 b)
+{
+	return (u128){
+		.lo = a.lo & b.lo,
+		.hi = a.hi & b.hi,
+	};
+}
+
+u128
+U128_Or(u128 a, u128 b)
+{
+	return (u128){
+		.lo = a.lo | b.lo,
+		.hi = a.hi | b.hi,
+	};
+}
+
+u128
+U128_Xor(u128 a, u128 b)
+{
+	return (u128){
+		.lo = a.lo ^ b.lo,
+		.hi = a.hi ^ b.hi,
+	};
+}
