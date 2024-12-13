@@ -26,14 +26,17 @@ set "link_options=%common_link_options% /DEBUG:FULL libucrtd.lib libvcruntimed.l
 
 if "%2"=="" goto invalid_arguments
 if not exist ../%2 goto invalid_arguments
-if "%3" neq "" goto invalid_arguments
+
+if "%3"=="release" (
+  set "compile_options=%common_compile_options% /O2 /Zo /Z7"
+) else if "%3" neq "" goto invalid_arguments
 
 cl %compile_options% ..\main.c /link %link_options% /pdb:day%1.pdb /out:day%1.exe && day%1.exe ..\%2
 
 goto end
 
 :invalid_arguments
-echo Invalid arguments^. Usage: run day input_file
+echo Invalid arguments^. Usage: run day input_file [release]
 goto end
 
 :end

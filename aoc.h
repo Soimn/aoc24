@@ -104,6 +104,14 @@ Char_UncheckedToUpper(u8 c)
 	return c&0xDF;
 }
 
+void
+Copy(void* dst, void* src, umm len)
+{
+  u8* bdst = dst;
+  u8* bsrc = src;
+  for (umm i = 0; i < len; ++i) bdst[i] = bsrc[i];
+}
+
 bool
 LoadInput(int argc, char** argv, String* input)
 {
@@ -116,7 +124,7 @@ LoadInput(int argc, char** argv, String* input)
 		u32 input_file_size    = 0;
 
 		FILE* input_file = 0;
-		if (fopen_s(&input_file, argv[1], "rb") != 0)
+		if (fopen_s(&input_file, argv[1], "rb") == 0)
 		{
 			struct __stat64 input_stat;
 			if (_stat64(argv[1], &input_stat) == 0 && input_stat.st_size < U32_MAX)
