@@ -115,8 +115,8 @@ LoadInput(int argc, char** argv, String* input)
 		u8* input_file_content = 0;
 		u32 input_file_size    = 0;
 
-		FILE* input_file = fopen(argv[1], "rb");
-		if (input_file != 0)
+		FILE* input_file = 0;
+		if (fopen_s(&input_file, argv[1], "rb") != 0)
 		{
 			struct __stat64 input_stat;
 			if (_stat64(argv[1], &input_stat) == 0 && input_stat.st_size < U32_MAX)
@@ -324,4 +324,30 @@ U128_Xor(u128 a, u128 b)
 		.lo = a.lo ^ b.lo,
 		.hi = a.hi ^ b.hi,
 	};
+}
+
+typedef struct V2S
+{
+  s32 x;
+  s32 y;
+} V2S;
+
+#define V2S(X, Y) (V2S){ .x = (X), .y = (Y) }
+
+V2S
+V2S_Add(V2S a, V2S b)
+{
+  return V2S(a.x + b.x, a.y + b.y);
+}
+
+V2S
+V2S_Sub(V2S a, V2S b)
+{
+  return V2S(a.x - b.x, a.y - b.y);
+}
+
+bool
+V2S_Equal(V2S a, V2S b)
+{
+  return (a.x == b.x && a.y == b.y);
 }
