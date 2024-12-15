@@ -49,7 +49,7 @@ AssertHandler(char* file, int line, char* expr)
 	exit(-1);
 }
 
-int IsDebuggerPresent();
+__declspec(dllimport) int IsDebuggerPresent(void);
 #define ASSERT(EX) ((EX) ? 1 : (IsDebuggerPresent() ? *(volatile int*)0 = 0 : AssertHandler(__FILE__, __LINE__, #EX)))
 #define NOT_IMPLEMENTED ASSERT(!"NOT_IMPLEMENTED")
 
