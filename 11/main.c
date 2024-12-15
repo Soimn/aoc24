@@ -2,60 +2,6 @@
 
 #include <windows.h>
 
-umm
-Part1(String input)
-{
-  umm buffer_size = 1ULL << 28;
-  umm* a_buffer = VirtualAlloc(0, buffer_size*sizeof(umm), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-  umm* b_buffer = VirtualAlloc(0, buffer_size*sizeof(umm), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-
-  umm len = 0;
-  for (;;)
-  {
-    umm val;
-    if (!EatUMM(&input, &val)) break;
-    else
-    {
-      ASSERT(len < buffer_size);
-      a_buffer[len++] = (umm)val;
-      EatSpace(&input);
-    }
-  }
-
-  for (umm i = 0; i < 25; ++i)
-  {
-    umm old_len = len;
-    len = 0;
-
-    for (umm j = 0; j < old_len; ++j)
-    {
-      if (a_buffer[j] == 0) b_buffer[len++] = a_buffer[j] + 1;
-      else
-      {
-        umm num_digits = 1;
-        for (umm x = a_buffer[j]/10; x != 0; x/= 10) ++num_digits;
-
-        if (num_digits % 2 != 0) b_buffer[len++] = a_buffer[j]*2024;
-        else
-        {
-          umm mult = 1;
-          for (umm k = 0; k < num_digits/2; ++k) mult *= 10;
-
-          ASSERT(len+2 < buffer_size);
-          b_buffer[len++] = a_buffer[j] / mult;
-          b_buffer[len++] = a_buffer[j] % mult;
-        }
-      }
-    }
-
-    umm* tmp = a_buffer;
-    a_buffer = b_buffer;
-    b_buffer = tmp;
-  }
-
-  return len;
-}
-
 int
 main(int argc, char** argv)
 {
@@ -65,38 +11,9 @@ main(int argc, char** argv)
 	umm part1_result = 0;
 	umm part2_result = 0;
 
-  part1_result = Part1(input);
+  umm buffer_size = 1ULL << 22;
+  umm* buffers    = VirtualAlloc(0, 2*buffer_size*sizeof(umm), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
-#if 0
-todo = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-rules = {}
-
-i = 0;
-while len(todo) != 0:
-    i += 1
-    n = todo.pop(0)
-    if n == 0:
-        rule = [1]
-    elif len(str(n)) % 2 != 0:
-        rule = [2024*n]
-    else:
-        rule = [int(str(n)[:len(str(n))//2]), int(str(n)[len(str(n))//2:])]
-
-    if n not in rules:
-        rules[n] = rule
-
-    for x in rule:
-        if x not in rules and x not in todo:
-            todo.append(x)
-
-ns = sorted(list(rules.keys()))
-
-for n in ns:
-    print("{" + f"{n}, {ns.index(rules[n][0])}, {ns.index(rules[n][1]) if len(rules[n]) == 2 else len(ns)}" + "},")
-#endif
-
-  umm buffer_size = 1ULL << 20;
-  umm* buffers = VirtualAlloc(0, 2*buffer_size*sizeof(umm), MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
   umm* a_buffer = &buffers[0];
   umm* b_buffer = &buffers[buffer_size];
   umm len = 0;
@@ -224,6 +141,12 @@ for n in ns:
     nmap = tmp;
 
     for (umm j = 0; j < ARRAY_LEN(rules); ++j) nmap[j] = 0;
+
+    if (i == 24)
+    {
+      for (umm j = 0; j < ARRAY_LEN(rules); ++j) part1_result += map[j];
+      part1_result += len;
+    }
   }
 
   for (umm i = 0; i < ARRAY_LEN(rules); ++i) part2_result += map[i];
