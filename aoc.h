@@ -359,3 +359,9 @@ V2S_Equal(V2S a, V2S b)
 {
   return (a.x == b.x && a.y == b.y);
 }
+
+bool
+V2S_InBounds(V2S v, s32 lo_incl, s32 hi_excl)
+{
+  return (v.x >= lo_incl && v.x < hi_excl && v.y >= lo_incl && v.y < hi_excl);
+}
