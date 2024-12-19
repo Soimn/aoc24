@@ -374,6 +374,12 @@ V2S_Sub(V2S a, V2S b)
   return V2S(a.x - b.x, a.y - b.y);
 }
 
+V2S
+V2S_Scale(V2S v, s32 n)
+{
+  return V2S(v.x*n, v.y*n);
+}
+
 bool
 V2S_Equal(V2S a, V2S b)
 {
