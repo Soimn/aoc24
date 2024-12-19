@@ -233,7 +233,9 @@ EatUMM(String* input, umm* result)
 bool
 EatSMM(String* input, smm* result)
 {
-	bool is_neg = EatChar(input, '-');
+	bool is_neg = false;
+  if      (EatChar(input, '-')) is_neg = true;
+  else if (EatChar(input, '+')) is_neg = false;
 	ASSERT(input->len != 0 && Char_IsDigit(input->data[0]));
 
 	umm unsigned_result;
@@ -244,6 +246,18 @@ EatSMM(String* input, smm* result)
 	*result = (is_neg ? -(smm)unsigned_result : (smm)unsigned_result);
 
 	return ate;
+}
+
+bool
+EatS32(String* input, s32* result)
+{
+  smm val;
+  bool ate = EatSMM(input, &val);
+
+  ASSERT((s32)val == val);
+  *result = (s32)val;
+
+  return ate;
 }
 
 bool
