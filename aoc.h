@@ -391,3 +391,9 @@ V2S_InBounds(V2S v, s32 lo_incl, s32 hi_excl)
 {
   return (v.x >= lo_incl && v.x < hi_excl && v.y >= lo_incl && v.y < hi_excl);
 }
+
+bool
+V2S_InBounds2(V2S v, s32 lo_incl_x, s32 hi_excl_x, s32 lo_incl_y, s32 hi_excl_y)
+{
+  return (v.x >= lo_incl_x && v.x < hi_excl_x && v.y >= lo_incl_y && v.y < hi_excl_y);
+}
