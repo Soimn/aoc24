@@ -63,6 +63,9 @@ __declspec(dllimport) int IsDebuggerPresent(void);
 
 #define ALIGNOF(T) _alignof(T)
 
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+
 typedef struct String
 {
 	u8* data;
