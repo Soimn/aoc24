@@ -31,7 +31,7 @@ if "%3"=="release" (
   set "compile_options=%common_compile_options% /O2 /arch:AVX2 /DDISABLE_ASSERT"
 ) else if "%3" neq "" goto invalid_arguments
 
-cl %compile_options% ..\main.c /link %link_options% /pdb:day%1.pdb /out:day%1.exe /STACK:2147483648,2147483648 && day%1.exe ..\%2
+cl %compile_options% ..\main.c /link %link_options% /pdb:day%1.pdb /out:day%1.exe && day%1.exe ..\%2
 
 goto end
 
