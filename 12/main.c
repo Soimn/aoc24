@@ -119,6 +119,7 @@ main(int argc, char** argv)
 
   while (map_size < input.len && input.data[map_size] != '\r') ++map_size;
 
+  ASSERT(map_size <= MAP_MAX_SIZE);
   ASSERT((map_size-1)*(map_size+2) + map_size-1 < input.len);
   for (umm j = 0; j < map_size; ++j)
   {

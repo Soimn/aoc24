@@ -11,6 +11,7 @@ Part1(String input)
 
   V2S pos = V2S(-1, -1);
 
+  ASSERT(map_size <= MAP_MAX_SIZE);
   ASSERT((map_size-1)*(map_size+2) + map_size-1 < (s32)input.len);
   for (umm j = 0; j < map_size; ++j)
   {

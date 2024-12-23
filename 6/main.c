@@ -56,6 +56,7 @@ main(int argc, char** argv)
   V2S start_pos = V2S(-1, -1);
   V2S start_dir = V2S(0, -1);
 
+  ASSERT(map_size <= MAP_MAX_SIZE);
   ASSERT((map_size-1)*(map_size+2) + map_size-1 < input.len);
 
   for (umm j = 0; j < map_size; ++j)

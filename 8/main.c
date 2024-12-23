@@ -26,6 +26,7 @@ main(int argc, char** argv)
   s32 map_size = 0;
   while ((umm)map_size < input.len && input.data[map_size] != '\r') ++map_size;
 
+  ASSERT(map_size <= MAP_MAX_SIZE);
   ASSERT((umm)((map_size-1)*(map_size+2) + map_size-1) < input.len);
   for (s32 j = 0; j < map_size; ++j)
   {

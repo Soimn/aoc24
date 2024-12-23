@@ -16,6 +16,8 @@ main(int argc, char** argv)
 
 	while (map_size < input.len && input.data[map_size] != '\r') ++map_size;
 
+  ASSERT(map_size <= MAP_PITCH);
+
 	for (umm j = 0; j < map_size; ++j)
 	{
 		for (umm i = 0; i < map_size; ++i)
