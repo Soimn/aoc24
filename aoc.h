@@ -357,6 +357,21 @@ U128_Xor(u128 a, u128 b)
 	};
 }
 
+u128
+U128_Shl(u128 n, umm amount)
+{
+  u128 result = n;
+
+  amount &= 127;
+  if (amount != 0)
+  {
+    if (amount < 64) result = U128(n.lo << amount, (n.hi << amount) | (n.lo >> (64 - amount)));
+    else             result = U128(0, n.lo << (amount & 63));
+  }
+
+  return result;
+}
+
 typedef struct V2S
 {
   s32 x;

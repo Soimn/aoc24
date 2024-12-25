@@ -159,6 +159,7 @@ main(int argc, char** argv)
   while (queue.len > 0)
   {
     Queue_Entry entry = Queue_Dequeue(&queue);
+    if (entry.key > min_key) break;
 
     u8 dir_idx;
     if (entry.dir.y == 0) dir_idx = (entry.dir.x == 1 ? 0 : 2);
