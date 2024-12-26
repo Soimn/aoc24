@@ -140,6 +140,12 @@ main(int argc, char** argv)
 
         req[i].vals[req[i].len]  = U128_Shl(U128(x_1 | (x_2 << (~x_1 & 7)), 0), i*3);
         req[i].masks[req[i].len] = U128_Shl(U128(upper_mask | 7, 0), i*3);
+
+        if (!U128_Equal(U128_And(req[i].vals[req[i].len], req[i].masks[req[i].len]), U128_And(U128(117440, 0), req[i].masks[req[i].len])))
+        {
+          continue;
+        }
+
         req[i].len += 1;
       }
     }
