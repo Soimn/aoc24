@@ -51,7 +51,7 @@ AssertHandler(char* file, int line, char* expr)
 }
 
 __declspec(dllimport) int IsDebuggerPresent(void);
-#define ASSERT(EX) ((EX) ? 1 : (IsDebuggerPresent() ? *(volatile int*)0 = 0 : AssertHandler(__FILE__, __LINE__, #EX)))
+#define ASSERT(EX) ((EX) ? 1 : (IsDebuggerPresent() ? *(volatile int*)0 = 0 : (AssertHandler(__FILE__, __LINE__, #EX), 0)))
 #else
 #define ASSERT(EX)
 #endif

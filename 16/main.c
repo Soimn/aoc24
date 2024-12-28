@@ -2,100 +2,71 @@
 
 #define MAP_MAX_SIZE 141
 
+typedef struct Cell
+{
+  u64 keys[4];
+  u64 o;
+} Cell;
+
+Cell map[MAP_MAX_SIZE*MAP_MAX_SIZE];
+
 typedef struct Queue_Entry
 {
-  umm key;
-  V2S pos;
-  V2S dir;
+  u64 key;
+  s32 pos;
+  u8 dir;
 } Queue_Entry;
 
-typedef struct Queue
-{
-  umm len;
-  umm cap;
-  Queue_Entry* e;
-} Queue;
+#define QUEUE_CAP (MAP_MAX_SIZE*MAP_MAX_SIZE*4*3)
+Queue_Entry Queue[QUEUE_CAP];
 
 void
-Queue_Enqueue(Queue* queue, umm key, V2S pos, V2S dir)
+Enqueue(Queue_Entry queue[QUEUE_CAP], umm* queue_len, Queue_Entry entry)
 {
-  ASSERT(queue->len < queue->cap);
+  ASSERT(*queue_len < QUEUE_CAP);
+  queue[*queue_len] = entry;
+  *queue_len += 1;
 
-  queue->e[queue->len++] = (Queue_Entry){ .key = key, .pos = pos, .dir = dir };
-
-  for (umm i = (queue->len-2)/2; i < queue->len; i = (i-1)/2)
+  for (umm i = (*queue_len-2)/2; i < *queue_len; i = (i-1)/2)
   {
     umm swap_idx = i;
-    if (2*i+1 < queue->len && queue->e[2*i+1].key < queue->e[swap_idx].key) swap_idx = 2*i+1;
-    if (2*i+2 < queue->len && queue->e[2*i+2].key < queue->e[swap_idx].key) swap_idx = 2*i+2;
+    if (2*i+1 < *queue_len && queue[2*i+1].key < queue[swap_idx].key) swap_idx = 2*i+1;
+    if (2*i+2 < *queue_len && queue[2*i+2].key < queue[swap_idx].key) swap_idx = 2*i+2;
 
     if (swap_idx == i) break;
 
-    Queue_Entry tmp = queue->e[i];
-    queue->e[i]        = queue->e[swap_idx];
-    queue->e[swap_idx] = tmp;
-
-    if (i == 0) break;
+    Queue_Entry tmp = queue[i];
+    queue[i]        = queue[swap_idx];
+    queue[swap_idx] = tmp;
   }
 }
 
 Queue_Entry
-Queue_Dequeue(Queue* queue)
+Dequeue(Queue_Entry queue[QUEUE_CAP], umm* queue_len)
 {
-  ASSERT(queue->len > 0);
+  ASSERT(*queue_len > 0);
 
-  Queue_Entry result = queue->e[0];
-  queue->e[0] = queue->e[--queue->len];
+  Queue_Entry result = queue[0];
 
-  for (umm i = 0; i < queue->len;)
+  *queue_len -= 1;
+  queue[0] = queue[*queue_len];
+
+  for (umm i = 0; i < *queue_len;)
   {
     umm swap_idx = i;
-    if (2*i+1 < queue->len && queue->e[2*i+1].key < queue->e[swap_idx].key) swap_idx = 2*i+1;
-    if (2*i+2 < queue->len && queue->e[2*i+2].key < queue->e[swap_idx].key) swap_idx = 2*i+2;
+    if (2*i+1 < *queue_len && queue[2*i+1].key < queue[swap_idx].key) swap_idx = 2*i+1;
+    if (2*i+2 < *queue_len && queue[2*i+2].key < queue[swap_idx].key) swap_idx = 2*i+2;
 
     if (swap_idx == i) break;
 
-    Queue_Entry tmp = queue->e[i];
-    queue->e[i]        = queue->e[swap_idx];
-    queue->e[swap_idx] = tmp;
+    Queue_Entry tmp = queue[i];
+    queue[i]        = queue[swap_idx];
+    queue[swap_idx] = tmp;
 
     i = swap_idx;
   }
 
   return result;
-}
-
-void
-TracePath(umm (*min_map)[4], umm map_size, bool* seen, V2S pos, umm key, umm dir)
-{
-  if (key == 0) return;
-
-  seen[pos.y*map_size + pos.x] = true;
-
-  V2S dir_map[4] = { V2S(1, 0), V2S(0, 1), V2S(-1, 0), V2S(0, -1) };
-
-  V2S npos = V2S_Sub(pos, dir_map[dir]);
-  if (min_map[npos.y*map_size + npos.x][dir] == key - 1)
-  {
-    TracePath(min_map, map_size, seen, npos, key-1, dir);
-  }
-
-  if (key > 1000)
-  {
-    umm ldir = (dir+1)%4;
-    V2S lpos = V2S_Sub(pos, dir_map[ldir]);
-    if (min_map[lpos.y*map_size + lpos.x][ldir] == key - 1001)
-    {
-      TracePath(min_map, map_size, seen, lpos, key-1001, ldir);
-    }
-
-    umm rdir = (dir-1)%4;
-    V2S rpos = V2S_Sub(pos, dir_map[rdir]);
-    if (min_map[rpos.y*map_size + rpos.x][rdir] == key - 1001)
-    {
-      TracePath(min_map, map_size, seen, rpos, key-1001, rdir);
-    }
-  }
 }
 
 int
@@ -107,109 +78,137 @@ main(int argc, char** argv)
   umm part1_result = 0;
   umm part2_result = 0;
 
-  u8 map[MAP_MAX_SIZE*MAP_MAX_SIZE];
-  umm min_map[MAP_MAX_SIZE*MAP_MAX_SIZE][4];
-  umm map_size = 0;
+  s32 map_size = 0;
 
-  while (map_size < input.len && input.data[map_size] != '\r') ++map_size;
+  while ((umm)map_size < input.len && input.data[map_size] != '\r') ++map_size;
 
   ASSERT(map_size <= MAP_MAX_SIZE);
-  ASSERT((map_size-1)*(map_size+2) + map_size-1 < input.len);
+  ASSERT((map_size-1)*(map_size+2) + map_size-1 > 0);
+  ASSERT((umm)((map_size-1)*(map_size+2) + map_size-1) < input.len);
 
   V2S start = V2S(-1, -1);
   V2S end   = V2S(-1, -1);
 
-  for (umm j = 0; j < map_size; ++j)
+  for (s32 j = 0; j < map_size; ++j)
   {
-    for (umm i = 0; i < map_size; ++i)
+    for (s32 i = 0; i < map_size; ++i)
     {
       u8 c = input.data[j*(map_size+2) + i];
 
-      if (c == 'S')
+      map[j*map_size + i] = (Cell){
+        .keys = { U64_MAX, U64_MAX, U64_MAX, U64_MAX },
+        .o    = 0,
+      };
+
+      if      (c == 'S') start = V2S(i, j);
+      else if (c == 'E') end   = V2S(i, j);
+
+      if (c == '#')
       {
-        start = V2S((s32)i, (s32)j);
-        c     = '.';
-      }
-      else if (c == 'E')
-      {
-        end = V2S((s32)i, (s32)j);
-        c   = '.';
-      }
-
-      map[j*map_size + i] = c;
-      min_map[j*map_size + i][0] = UMM_MAX;
-      min_map[j*map_size + i][1] = UMM_MAX;
-      min_map[j*map_size + i][2] = UMM_MAX;
-      min_map[j*map_size + i][3] = UMM_MAX;
-    }
-  }
-
-  umm queue_cap = MAP_MAX_SIZE*MAP_MAX_SIZE*4;
-  Queue queue = {
-    .len = 0,
-    .cap = queue_cap,
-    .e   = malloc(sizeof(Queue_Entry)*queue_cap),
-  };
-
-  Queue_Enqueue(&queue,    0, start, V2S( 1,  0));
-  Queue_Enqueue(&queue, 2000, start, V2S(-1,  0));
-
-  umm min_key = UMM_MAX;
-
-  while (queue.len > 0)
-  {
-    Queue_Entry entry = Queue_Dequeue(&queue);
-    if (entry.key > min_key) break;
-
-    u8 dir_idx;
-    if (entry.dir.y == 0) dir_idx = (entry.dir.x == 1 ? 0 : 2);
-    else                  dir_idx = (entry.dir.y == 1 ? 1 : 3);
-
-    umm* min_map_key = &min_map[entry.pos.y*map_size + entry.pos.x][0];
-    if (entry.key < min_map_key[dir_idx]) min_map_key[dir_idx] = entry.key;
-
-    if (V2S_Equal(entry.pos, end) && entry.key < min_key) min_key = entry.key;
-
-    V2S npos = V2S_Add(entry.pos, entry.dir);
-    if (map[npos.y*map_size + npos.x] != '#' &&
-        entry.key + 1 <= min_key             &&
-        entry.key + 1 <= min_map[npos.y*map_size + npos.x][dir_idx])
-    {
-      Queue_Enqueue(&queue, entry.key + 1, npos, entry.dir);
-    }
-
-    if (entry.key + 1000 <= min_key)
-    {
-      if (entry.key + 1000 <= min_map_key[(dir_idx+1) % 4])
-      {
-        Queue_Enqueue(&queue, entry.key + 1000, entry.pos, V2S(-entry.dir.y,  entry.dir.x));
-      }
-
-      if (entry.key + 1000 <= min_map_key[(dir_idx-1)%4])
-      {
-        Queue_Enqueue(&queue, entry.key + 1000, entry.pos, V2S( entry.dir.y, -entry.dir.x));
+        map[j*map_size + i] = (Cell){0};
       }
     }
   }
 
-  part1_result = min_key;
+  ASSERT(start.x != -1 && start.y != -1);
+  ASSERT(end.x != -1 && end.y != -1);
 
-  bool seen[MAP_MAX_SIZE*MAP_MAX_SIZE] = {0};
-  for (umm i = 0; i < 4; ++i)
+  umm queue_len = 0;
+  Enqueue(Queue, &queue_len, (Queue_Entry){ .key =    0, .pos = start.y*map_size + start.x, .dir = 0 });
+  Enqueue(Queue, &queue_len, (Queue_Entry){ .key = 2000, .pos = start.y*map_size + start.x, .dir = 2 });
+
+  V2S dir_map[4] = { V2S(1, 0), V2S(0, 1), V2S(-1, 0), V2S(0, -1) };
+
+  u64 min_path_len = U64_MAX;
+  while (queue_len > 0)
   {
-    umm min_map_key = min_map[end.y*map_size + end.x][i];
+    Queue_Entry entry = Dequeue(Queue, &queue_len);
 
-    if (min_map_key == min_key)
+    V2S pos = V2S(entry.pos % map_size, entry.pos / map_size);
+
+    if      (entry.key > min_path_len) break;
+    else if (V2S_Equal(pos, end)) min_path_len = entry.key;
+
+    V2S npos   = V2S_Add(pos, dir_map[entry.dir]);
+    s32 npos_i = npos.y*map_size + npos.x;
+    if (V2S_InBounds(npos, 0, map_size) && entry.key + 1 < map[npos_i].keys[entry.dir])
     {
-      TracePath(min_map, map_size, seen, end, min_map_key, i);
+      map[npos_i].keys[entry.dir] = entry.key + 1;
+
+      Enqueue(Queue, &queue_len, (Queue_Entry){ .key = entry.key + 1, .pos = npos_i, .dir = entry.dir });
+    }
+
+    for (umm i = 0; i < 2; ++i)
+    {
+      u8 dir = (entry.dir + 2*i + 1) & 3;
+
+      if (entry.key + 1000 < map[entry.pos].keys[dir])
+      {
+        map[entry.pos].keys[dir] = entry.key + 1000;
+
+        Enqueue(Queue, &queue_len, (Queue_Entry){ .key = entry.key + 1000, .pos = entry.pos, .dir = dir });
+      }
     }
   }
 
-  for (umm j = 0; j < map_size; ++j)
+  part1_result = min_path_len;
+
+  queue_len = 0;
+  for (u8 i = 0; i < 4; ++i)
   {
-    for (umm i = 0; i < map_size; ++i)
+    if (map[end.y*map_size + end.x].keys[i] == min_path_len)
     {
-      part2_result += (seen[j*map_size + i] ? 1 : 0);
+      Enqueue(Queue, &queue_len, (Queue_Entry){ .key = min_path_len, .pos = end.y*map_size + end.x, .dir = i });
+    }
+  }
+
+  map[end.y*map_size + end.x].o = 1;
+  part2_result += 1;
+
+  while (queue_len > 0)
+  {
+    Queue_Entry entry = Dequeue(Queue, &queue_len);
+
+    V2S pos = V2S(entry.pos % map_size, entry.pos / map_size);
+
+    if (entry.key > 1)
+    {
+      V2S npos   = V2S_Sub(pos, dir_map[entry.dir]);
+      s32 npos_i = npos.y*map_size + npos.x;
+
+      if (V2S_InBounds(npos, 0, map_size) && entry.key - 1 == map[npos_i].keys[entry.dir])
+      {
+        part2_result += (map[npos_i].o == 0);
+
+        if (!V2S_Equal(npos, start))
+        {
+          map[npos_i].keys[entry.dir] = UMM_MAX;
+          map[npos_i].o               = 1;
+          Enqueue(Queue, &queue_len, (Queue_Entry){ .key = entry.key - 1, .pos = npos_i, .dir = entry.dir });
+        }
+      }
+    }
+
+    if (entry.key > 1001)
+    {
+      for (umm i = 0; i < 2; ++i)
+      {
+        u8 dir     = (entry.dir + 2*i + 1) & 3;
+        V2S npos   = V2S_Sub(pos, dir_map[dir]);
+        s32 npos_i = npos.y*map_size + npos.x;
+
+        if (V2S_InBounds(npos, 0, map_size) && entry.key - 1001 == map[npos_i].keys[dir])
+        {
+          part2_result += (map[npos_i].o == 0);
+
+          if (!V2S_Equal(npos, start))
+          {
+            map[npos_i].keys[dir] = UMM_MAX;
+            map[npos_i].o         = 1;
+            Enqueue(Queue, &queue_len, (Queue_Entry){ .key = entry.key - 1001, .pos = npos_i, .dir = dir });
+          }
+        }
+      }
     }
   }
 

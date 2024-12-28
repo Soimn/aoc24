@@ -18,7 +18,7 @@ if not exist build mkdir build
 cd build
 
 
-set "common_compile_options= /nologo /W3"
+set "common_compile_options= /nologo /W4 /wd4201"
 set "common_link_options= /incremental:no /opt:ref /subsystem:console"
 
 set "compile_options=%common_compile_options% /Od /Zo /Z7 /RTC1 /MTd"
