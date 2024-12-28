@@ -51,7 +51,7 @@ Dequeue(Queue_Entry queue[QUEUE_CAP], umm* queue_len)
   *queue_len -= 1;
   queue[0] = queue[*queue_len];
 
-  for (umm i = 0; i < *queue_len;)
+  for (umm i = 0; i < *queue_len-1;)
   {
     umm swap_idx = i;
     if (2*i+1 < *queue_len && queue[2*i+1].key < queue[swap_idx].key) swap_idx = 2*i+1;
