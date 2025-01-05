@@ -95,6 +95,24 @@ String_MatchPrefix(String s0, String s1)
 	return result;
 }
 
+String
+String_Eat(String s, u32 n)
+{
+  return (String){
+    .data = s.data + n,
+    .len  = (n < s.len ? s.len - n : 0),
+  };
+}
+
+String
+String_Chop(String s, u32 n)
+{
+  return (String){
+    .data = s.data,
+    .len  = (n < s.len ? s.len - n : 0),
+  };
+}
+
 bool
 Char_IsAlpha(u8 c)
 {
@@ -276,6 +294,24 @@ EatPrefix(String* input, String prefix)
 	}
 
 	return result;
+}
+
+bool
+EatIdent(String* input, String* result)
+{
+  result->data = input->data;
+
+  if (input->len > 0 && (Char_IsAlpha(*input->data) || *input->data == '_'))
+  {
+    while (input->len > 0 && (Char_IsAlpha(*input->data) || Char_IsDigit(*input->data) || *input->data == '_'))
+    {
+      Advance(input, 1);
+    }
+  }
+
+  result->len = (u32)(input->data - result->data);
+
+  return (result->len != 0);
 }
 
 // Taken from http://www.isthe.com/chongo/tech/comp/fnv/index.html#FNV-1a
